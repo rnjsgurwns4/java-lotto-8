@@ -10,6 +10,7 @@ public class Application {
 
         //구입액수 입력
         int money = inputMoney();
+        System.out.println();
 
         //구매로또번호 확인
         System.out.println(money / 1000 + "개를 구매했습니다.");
@@ -18,7 +19,9 @@ public class Application {
 
         //당첨번호 입력
         Lotto winningLotto = inputWinningNumbers();
+        System.out.println();
         int bonus = inputBonus(winningLotto);
+        System.out.println();
 
         //결과
         System.out.println("당첨 통계\n---");
@@ -112,6 +115,7 @@ public class Application {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("[ERROR] 숫자가 아닌 값이 포함되어 있습니다: " + numStr);
         }
+
     }
     //---------------------------------------------------
 
@@ -155,60 +159,41 @@ public class Application {
     public static void printResult(
             List<Lotto> purchasedLotto, Lotto winningLotto, int bonusNumber, int money) {
 
-        Map<Integer, Integer> stats = new HashMap<>();
-        for (int i = 1; i <= 5; i++) {
-            stats.put(i, 0);
+        Map<Rank, Integer> stats = new EnumMap<>(Rank.class);
+        
+        //초기화
+        for (Rank rank : Rank.getWinningRanks()) {
+            stats.put(rank, 0);
         }
 
         for (Lotto lotto : purchasedLotto) {
             int matchCount = lotto.countMatchingNumbers(winningLotto);
             boolean bonusMatch = lotto.contains(bonusNumber);
-            int rank = determineRank(matchCount, bonusMatch);
-            if (rank != 0) {
+
+            Rank rank = Rank.determineRank(matchCount, bonusMatch);
+
+            if (rank != Rank.NONE) {
                 stats.put(rank, stats.get(rank) + 1);
             }
         }
 
-        System.out.println("3개 일치 (5,000원) - " + stats.get(5) + "개");
-        System.out.println("4개 일치 (50,000원) - " + stats.get(4) + "개");
-        System.out.println("5개 일치 (1,500,000원) - " + stats.get(3) + "개");
-        System.out.println("5개 일치, 보너스 볼 일치 (30,000,000원) - " + stats.get(2) + "개");
-        System.out.println("6개 일치 (2,000,000,000원) - " + stats.get(1) + "개");
+        List<Rank> displayOrder = Arrays.stream(Rank.getWinningRanks())
+                .sorted(Comparator.comparingLong(Rank::getPrize))
+                .toList();
+
+        for (Rank rank : displayOrder) {
+            System.out.println(rank.getMessage() + " - " + stats.get(rank) + "개");
+        }
 
         long totalWinnings = calculateTotalWinnings(stats);
         double returnRate = calculateReturnRate(totalWinnings, money);
-        System.out.println(String.format("총 수익률은 %.1f%%입니다.", returnRate));
+        System.out.printf("총 수익률은 %.1f%%입니다.%n", returnRate);
     }
 
-    private static int determineRank(int matchCount, boolean bonusMatch) {
-        if (matchCount == 6) {
-            return 1; // 1등
-        }
-        if (matchCount == 5 && bonusMatch) {
-            return 2; // 2등
-        }
-        if (matchCount == 5) {
-            return 3; // 3등
-        }
-        if (matchCount == 4) {
-            return 4; // 4등
-        }
-        if (matchCount == 3) {
-            return 5; // 5등
-        }
-        return 0; // 꽝
-    }
-
-    private static long calculateTotalWinnings(Map<Integer, Integer> stats) {
-        long totalWinnings = 0L;
-
-        totalWinnings += (long) stats.get(5) * 5_000;
-        totalWinnings += (long) stats.get(4) * 50_000;
-        totalWinnings += (long) stats.get(3) * 1_500_000;
-        totalWinnings += (long) stats.get(2) * 30_000_000;
-        totalWinnings += (long) stats.get(1) * 2_000_000_000;
-
-        return totalWinnings;
+    private static long calculateTotalWinnings(Map<Rank, Integer> stats) {
+        return stats.entrySet().stream()
+                .mapToLong(entry -> entry.getKey().getPrize() * entry.getValue())
+                .sum();
     }
 
     private static double calculateReturnRate(long totalWinnings, int money) {
