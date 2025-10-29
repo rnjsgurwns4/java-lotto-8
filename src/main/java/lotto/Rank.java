@@ -34,7 +34,6 @@ public enum Rank {
         if (matchCount == SECOND.matchCount && bonusMatch == SECOND.bonusMatchRequired) {
             return SECOND;
         }
-        // 보너스가 필요없는 5개 일치 (3등)
         if (matchCount == THIRD.matchCount && !THIRD.bonusMatchRequired) {
             return THIRD;
         }
@@ -65,3 +64,4 @@ public enum Rank {
                 .toArray(Rank[]::new);
     }
 }
+
